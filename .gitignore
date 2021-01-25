@@ -5,6 +5,7 @@
 *.png
 *.bmp
 *.pth
+*.ipynb
 
 *.pyc
 *.txt
