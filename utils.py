@@ -4,6 +4,8 @@ import os
 import numpy as np
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
 
+from sklearn.decomposition import PCA
+
 data_path = 'data/20201229'
 
 
@@ -344,5 +346,26 @@ def draw_anno(df, which, des_path:dir):
         plt.show()
     print(f'Output annotated files to {des_path}')
 
+
+def featurePCA(feature_path, label_path, sample_index_path=None):
+    colors = ['red', 'blue']
+
+    pca = PCA(n_components=2)
+    pca_result = pca.fit_transform(features)    
+    pca_one = pca_result[:,0]
+    pca_two = pca_result[:,1]
+
+    plt.figure(figsize=(8,8))
+    scatter = plt.scatter(pca_one, pca_two, c=relabels, cmap=matplotlib.colors.ListedColormap(colors), 
+                alpha=0.3, edgecolors=None)    
+    plt.legend(handles=scatter.legend_elements()[0], labels=legend_label)
+    plt.title('Feature map PCA')
+    plt.xlabel('PCA 1')
+    plt.ylabel('PCA 2')
+    plt.show()
+
 if __name__ == "__main__":
-    images2video('tmp_result/LPRnet_result/', 'LPRnet_upper.avi', 'tmp_result/LPRnet_result/', 1)
+    # output the image results into a video
+    # images2video('tmp_result/LPRnet_result/correct', 'LPRnet_Combination.avi', 'tmp_result/LPRnet_result/', 0.5)
+
+    

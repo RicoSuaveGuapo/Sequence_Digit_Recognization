@@ -124,6 +124,18 @@ def decode(preds, CHARS):
     return labels, pred_labels
 
 if __name__ == '__main__':
+    
+    save_path = 'tmp_result/LPRnet_result'
+
+    if os.path.exists(os.path.join(save_path, 'correct')):
+        shutil.rmtree(os.path.join(save_path, 'correct'))
+        shutil.rmtree(os.path.join(save_path, 'wrong'))
+        os.mkdir(os.path.join(save_path, 'correct'))
+        os.mkdir(os.path.join(save_path, 'wrong'))
+    elif not os.path.exists(os.path.join(save_path, 'correct')):
+        os.mkdir(os.path.join(save_path, 'correct'))
+        os.mkdir(os.path.join(save_path, 'wrong'))
+
 
     CHARS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
              'M', 'V', 'H','-'
@@ -132,21 +144,27 @@ if __name__ == '__main__':
                      '10':'M', '11':'V', '12':'H','13':'-'}
 
     parser = argparse.ArgumentParser(description='LPR Result Demo')
-    parser.add_argument("-image", help='image path', default='data/20201229/EXT/resize/20201229082312_4EXT.bmp', type=str)
+    parser.add_argument("--mode", help='0: train, 1: val, 2: test')
+    parser.set_defaults(mode=1)
     args = parser.parse_args()
+
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    lprnet = LPRNet(class_num=len(CHARS), dropout_rate=0)
-    lprnet.to(device)
-    lprnet.load_state_dict(torch.load('weights/lprnet/lprnet_92.77.pth'))
-    lprnet.eval()
+    lprnet_up = LPRNet(class_num=len(CHARS), dropout_rate=0)
+    lprnet_do = LPRNet(class_num=len(CHARS), dropout_rate=0)
+    lprnet_up.to(device)
+    lprnet_do.to(device)
+    lprnet_up.load_state_dict(torch.load('tmp_result/LPRnet_result/reserved_weight/upper_96.39.pth'))
+    lprnet_do.load_state_dict(torch.load('tmp_result/LPRnet_result/reserved_weight/lower_98.80.pth'))
+    lprnet_up.eval()
+    lprnet_do.eval()
     print("Successful to build network!")
     
-    df         = pd.read_csv('20201229_EXT_clear_2data_mode_resize.csv')
+    df         = pd.read_csv('data.csv')
     image_path = 'data/20201229/EXT/resize'
     
     data_mode = df['mode']
-    index     = data_mode == 1
+    index     = data_mode == args.mode
     name      = df['file_name'][index].tolist()
     img_paths = [os.path.join(image_path, d) for d in name]
     
@@ -155,14 +173,24 @@ if __name__ == '__main__':
     xmax      = df['xmax'][index].tolist()
     ymax      = df['ymax'][index].tolist()
     ymax_2    = df['ymax_2'][index].tolist()
+    gt_1      = df['GT_1'][index].tolist()
+    gt_2      = df['GT_2'][index].tolist()
+
+    enlarge = 10
+    xmin      = [d - enlarge for d in xmin]
+    xmax      = [d + enlarge for d in xmax]
+
+    gt_1 = [str(d) for d in gt_1]
+    gt   = [d+gt_2[i] for i, d in enumerate(gt_1)]
 
     images_ori = [cv2.imread(d,0) for d in img_paths]
-    # TODO:
-    # for lower region
-    # images     = [d[ymax_2[i]:ymax[i], xmin[i]:xmax[i]] for i, d in enumerate(images_ori)]
     # for upper region
-    images     = [d[ymin[i]:ymax_2[i], xmin[i]:xmax[i]] for i, d in enumerate(images_ori)]
-    images_res = [cv2.resize(d, (94, 24), interpolation=cv2.INTER_CUBIC) for d in images]
+    upper     = [d[ymin[i]:ymax_2[i], xmin[i]:xmax[i]] for i, d in enumerate(images_ori)]
+    # for lower region
+    lower     = [d[ymax_2[i]:ymax[i], xmin[i]:xmax[i]] for i, d in enumerate(images_ori)]
+    
+    upper_res = [cv2.resize(d, (94, 24), interpolation=cv2.INTER_CUBIC) for d in upper]
+    lower_res = [cv2.resize(d, (94, 24), interpolation=cv2.INTER_CUBIC) for d in lower]
     # image = cv2.imread(args.image,0)   
     
     # im = cv2.resize(image, (94, 24), interpolation=cv2.INTER_CUBIC)
@@ -175,28 +203,59 @@ if __name__ == '__main__':
     # input_img = input_img.unsqueeze(0)
     # input_img = input_img.unsqueeze(0).to(device)
 
-    images = [(np.asarray(im, 'float32')- 37.7) / 255. for im in images_res]
-    images = [torch.FloatTensor(im).unsqueeze(0).unsqueeze(0).to(device) for im in images]
+    upper_res = [(np.asarray(im, 'float32')- 37.7) / 255. for im in upper_res]
+    lower_res = [(np.asarray(im, 'float32')- 37.7) / 255. for im in lower_res]
+    upper_res = [torch.FloatTensor(im).unsqueeze(0).unsqueeze(0).to(device) for im in upper_res]
+    lower_res = [torch.FloatTensor(im).unsqueeze(0).unsqueeze(0).to(device) for im in lower_res]
 
-    for idx, input_img in enumerate(images):
-        preds = lprnet(input_img)
-        preds = preds.cpu().detach().numpy()  # (1, 68, 18)
-        since      = time.time()
-        labels, pred_labels = decode(preds, CHARS)
+    acc = 0
+    for idx, upper in enumerate(upper_res):
+        preds_up = lprnet_up(upper)
+        preds_do = lprnet_do(lower_res[idx])
 
-        if idx == len(images)-1:
-            print("model inference in {:.6f} seconds".format(time.time() - since))
+        preds_up = preds_up.cpu().detach().numpy()  # (1, 68, 18)
+        preds_do = preds_do.cpu().detach().numpy()  # (1, 68, 18)
+        since = time.time()
+        labels_up, pred_labels_up = decode(preds_up, CHARS)
+        labels_do, pred_labels_do = decode(preds_do, CHARS)
 
-        pred_labels = [CHARS_reverse[f'{d}'] for d in pred_labels[0]]
-        pred_labels = ''.join([str(d) for d in pred_labels])
-        img = cv2ImgAddText(images_ori[idx], pred_labels, (0, 630), textColor=(0,255,0), textSize=100)
-        cv2.imwrite(f'tmp_result/LPRnet_result/{os.path.basename(img_paths[idx])}', img)
-        print('image saved')
+        if idx == len(upper)-1:
+            print("model inference in {:.2E} seconds".format(time.time() - since))
+
+        pred_labels_up = [CHARS_reverse[f'{d}'] for d in pred_labels_up[0]]
+        pred_labels_up = ''.join([str(d) for d in pred_labels_up])
+
+        pred_labels_do = [CHARS_reverse[f'{d}'] for d in pred_labels_do[0]]
+        pred_labels_do = ''.join([str(d) for d in pred_labels_do])
+
+        pred_labels = pred_labels_up + pred_labels_do
+
+        if pred_labels == gt[idx]:
+            acc += 1
+            img = cv2ImgAddText(images_ori[idx], pred_labels, (0, 630), textColor=(0,255,0), textSize=100)
+            cv2.imwrite(f'tmp_result/LPRnet_result/correct/{os.path.basename(img_paths[idx])}', img)
+        else:
+            img = cv2ImgAddText(images_ori[idx], pred_labels, (0, 630), textColor=(255,0,0), textSize=100)
+            img = cv2ImgAddText(img, gt[idx], (0, 530), textColor=(0,0,255), textSize=100)
+            cv2.imwrite(f'tmp_result/LPRnet_result/wrong/{os.path.basename(img_paths[idx])}', img)
+        if idx % 10 == 0 and idx != 0:
+            print(f'{idx} images are saved')
+    
+    acc = acc/len(upper_res)
+    if args.mode == 0:
+        print('\nIn Training set')
+        print(f'Accuracy is {acc*100:.2f} %')
+    elif args.mode == 1:
+        print('\nIn Validation set')
+        print(f'Accuracy is {acc*100:.2f} %')
+    else:
+        print('\nIn Testing set')
+        print(f'Accuracy is {acc*100:.2f} %')
     # transformed_img = convert_image(transfer)
     # cv2.imshow('transformed', transformed_img)
     
-    plt.imshow(img)
-    plt.show()
+    # plt.imshow(img)
+    # plt.show()
     # cv2.imshow("test", img)
     # cv2.waitKey()
     # cv2.destroyAllWindows()

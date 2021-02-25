@@ -47,12 +47,13 @@ if __name__ == '__main__':
     parser.add_argument('--img_size', default=(94, 24), help='the image size')
     parser.add_argument('--dropout_rate', default=0.5, help='dropout rate.')
     parser.add_argument('--epoch', type=int, default=33, help='number of epoches for training')
-    parser.add_argument('--pth', help='the trained model weights')
+    parser.add_argument('--pth', help='the trained model weights, the --part must be matched')
     parser.add_argument('--batch_size', default=16, help='batch size')
     parser.add_argument('--save_dir', help='batch size')
+    parser.add_argument('--part', help='which part should be trained')
     parser.set_defaults(epoch=1024, batch_size=16, img_dir='data/20201229/EXT/resize', \
-                        df='20201229_EXT_clear_2data_mode_resize.csv', save_dir='weights/lprnet', \
-                        pth='reserved_weight/lower_92.77.pth')
+                        df='data.csv', save_dir='weights/lprnet', \
+                        pth='tmp_result/LPRnet_result/reserved_weight/lower_95.18.pth', part='lower')
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -64,11 +65,18 @@ if __name__ == '__main__':
     if args.pth is not None:
         lprnet.load_state_dict(torch.load(args.pth, map_location=lambda storage, loc: storage))
         print('pre-trained model loaded')
-    
+        if os.path.basename(args.pth).startswith('lower'):
+            print('\n ----Load in lower part pre-trained----')
+            assert args.part == 'lower'
+        elif os.path.basename(args.pth).startswith('upper'):
+            print('\n ----Load in upper part pre-trained----')
+            assert args.part == 'upper'
+        else:
+            raise AssertionError('make sure that the pre-trained model has corresponding data, use --part to modified')
     
     df = pd.read_csv(args.df)
-    train_dataset = LPRDataLoader(img_dir=args.img_dir, imgSize=args.img_size, df=df, mode='train')
-    val_dataset   = LPRDataLoader(img_dir=args.img_dir, imgSize=args.img_size, df=df, mode='validation')
+    train_dataset = LPRDataLoader(img_dir=args.img_dir, imgSize=args.img_size, df=df, mode='train', part=args.part)
+    val_dataset   = LPRDataLoader(img_dir=args.img_dir, imgSize=args.img_size, df=df, mode='validation', part=args.part)
 
     # TODO
     # Cutmix
@@ -93,7 +101,6 @@ if __name__ == '__main__':
     T_0 = 400
     scheduler = CosineAnnealingWarmRestarts(optimizer, T_0)
 
-
     ## save logging and weights
     if not os.path.exists('log'):
         os.mkdir('log')
@@ -105,7 +112,6 @@ if __name__ == '__main__':
     validation_logging_file = 'log/lprnet_val_log.txt'
     if os.path.exists(validation_logging_file):
         os.remove(validation_logging_file)
-    
     
     start_time = time.time()
     total_iters = 0
@@ -158,9 +164,6 @@ if __name__ == '__main__':
                     start += length
                     if np.array_equal(np.array(pred_labels[i]), label.cpu().numpy()):
                         TP += 1
-                    # TODO
-                    print(label)
-                    print(pred_labels[i])
 
                 time_cur = (time.time() - since) / 100
                 since = time.time()
@@ -182,7 +185,10 @@ if __name__ == '__main__':
 
                 if ACC >= max(best_acc):
                     # save model
-                    torch.save(lprnet.state_dict(), os.path.join(args.save_dir, f'lprnet_{ACC*100:.2f}.pth'))
+                    if args.part == 'lower':
+                        torch.save(lprnet.state_dict(), os.path.join(args.save_dir, f'lower_{ACC*100:.2f}.pth'))
+                    elif args.part == 'upper':
+                        torch.save(lprnet.state_dict(), os.path.join(args.save_dir, f'upper_{ACC*100:.2f}.pth'))
                     print('\n-------- Saveing the best weight --------')
                 else:
                     print('\n-------- Accuracy is not improving --------')
@@ -194,7 +200,7 @@ if __name__ == '__main__':
                 # for CosineAnnealingLR
                 # scheduler.step()
 
-                print("Epoch {}/{}, Iters: {:0>6d}, validation_accuracy: {:.2f}%".format(epoch+1, args.epoch, total_iters, ACC*100))
+                print("Epoch {}/{}, Iters: {:0>6d}, validation_accuracy: {:.2f}%\n".format(epoch+1, args.epoch, total_iters, ACC*100))
                 with open(validation_logging_file, 'a') as f:
                     f.write("Epoch {}/{}, Iters: {:0>6d}, validation_accuracy: {:.2f}%".format(epoch+1, args.epoch, total_iters, ACC*100)+'\n')
                 f.close()
@@ -206,7 +212,6 @@ if __name__ == '__main__':
         
         # for CosineAnnealingLR
         # scheduler = CosineAnnealingLR(optimizer, steps)
-
                                 
     time_elapsed = time.time() - start_time  
     print('-'*10)

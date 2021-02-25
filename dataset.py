@@ -77,13 +77,16 @@ class net_dataset(Dataset):
 
         return sample
 
-
-
 class LPRDataLoader(Dataset):
-    def __init__(self, img_dir, df, mode, imgSize=(94, 24), PreprocFun=None):
+    def __init__(self, img_dir, df, mode, imgSize=(94, 24), PreprocFun=None, part='lower', visualtion=False):
         assert imgSize == (94, 24)
         assert os.path.isdir(img_dir), 'img_dir must be dir'
         assert mode.lower() in ['train','validation','test']
+        assert part in ['lower', 'upper']
+        
+        self.visualtion= visualtion
+        if self.visualtion:
+            print('NOTICE that YOU are in the visualtion mode, original image and augmented image will be output')
 
         mode_dict = {'train':0, 'validation':1, 'test':2}
         self.mode      = mode_dict[mode]
@@ -94,22 +97,32 @@ class LPRDataLoader(Dataset):
         self.name      = df['file_name'][index].tolist()
         self.img_paths = [os.path.join(self.img_dir, d) for d in self.name]
         self.img_size  = imgSize
+        self.part      = part
         # TODO: For both
         # to account the upper and lower, need to repeat the path twice
         # self.img_paths = list(itertools.chain.from_iterable(itertools.repeat(d, 2) for d in self.img_paths))
 
-        self.gt1       = df['GT_1'][index].tolist()
-        self.gt2       = df['GT_2'][index].tolist()
+        # self.gt1       = df['GT_1'][index].tolist()
+        # self.gt2       = df['GT_2'][index].tolist()
         # TODO: For both
         # self.gt        = [self.gt1[int(i/2)] if i % 2 == 0 else self.gt2[i//2] for i in list(range(len(self.gt1)*2))]
-        # TODO: For lower only
-        # self.gt = df['GT_2'][index].tolist()
-        # TODO: For upper only
-        self.gt = df['GT_1'][index].tolist()
         
+        # For lower only
+        if self.part == 'lower':
+            self.gt = df['GT_2'][index].tolist()
+        # For upper only
+        elif self.part == 'upper':
+            self.gt = df['GT_1'][index].tolist()
+        
+        # increase a bit of x direction bbox
+        enlarge = 10
         self.xmin      = df['xmin'][index].tolist()
-        self.ymin      = df['ymin'][index].tolist()
+        self.xmin      = [d - enlarge for d in self.xmin]
+        
         self.xmax      = df['xmax'][index].tolist()
+        self.xmax      = [d + enlarge for d in self.xmax]
+
+        self.ymin      = df['ymin'][index].tolist()
         self.ymax      = df['ymax'][index].tolist()
         self.ymax_2    = df['ymax_2'][index].tolist()
 
@@ -136,23 +149,28 @@ class LPRDataLoader(Dataset):
         
         # TODO: For both
         # Image = Image[self.ymin[index]:self.ymax[index], self.xmin[index]:self.xmax[index]]
-        # TODO: For lower only
-        # Image = Image[self.ymax_2[index]:self.ymax[index], self.xmin[index]:self.xmax[index]]
-        # TODO: For upper only
-        Image = Image[self.ymin[index]:self.ymax_2[index], self.xmin[index]:self.xmax[index]]
+        
+        # For lower only
+        if self.part == 'lower':
+            Image = Image[self.ymax_2[index]:self.ymax[index], self.xmin[index]:self.xmax[index]]
+        # For upper only
+        elif self.part == 'upper':
+            Image = Image[self.ymin[index]:self.ymax_2[index], self.xmin[index]:self.xmax[index]]
         
         label = str(self.gt[index])
 
         height, width = Image.shape
         Image = cv2.resize(Image, self.img_size)
         # DANGER
-        # cv2.imwrite('lprnet_original.jpg', Image)
-
+        if self.visualtion:
+            cv2.imwrite('lprnet_ori.jpg', Image)
 
         if self.mode == 0:
             Image = self.img_aug(Image)
         # DANGER
-        # cv2.imwrite('lprnet_aug.jpg', Image)
+        if self.visualtion:
+            cv2.imwrite('lprnet_aug.jpg', Image)
+
         Image = self.PreprocFun(Image)        
         label, length = self.check(label)
         # len(label) gives the length of the label string
@@ -185,8 +203,60 @@ class LPRDataLoader(Dataset):
             else:
                 raise RuntimeError
         return label_out, length
-        
-        
+
+
+class RotationDataset(Dataset):
+    def __init__(self, path, mode:str, val_split=0.2, test_split=0.2, seed=42, img_size=128):
+        super().__init__()
+        assert mode.lower() in ['train', 'val', 'test']
+
+        self.img_size  = img_size
+        self.img_paths = os.listdir(path)
+        self.img_paths = [os.path.join(path,d) for d in self.img_paths if d.endswith('.bmp')]
+
+        np.random.seed(seed)
+        self.img_paths = np.random.permutation(self.img_paths)
+
+        end_train_idx = round(len(self.img_paths)*(1-val_split-test_split))
+        end_val_idx   = round(len(self.img_paths)*(1-test_split))
+        if mode == 'train':
+            self.img_paths = self.img_paths[:end_train_idx]
+        elif mode == 'val':
+            self.img_paths = self.img_paths[end_train_idx:end_val_idx]
+        else:
+            self.img_paths = self.img_paths[end_val_idx:]
+
+    def __len__(self):
+        return len(self.img_paths)
+
+    def __getitem__(self, index):
+        image = cv2.imread(self.img_paths[index], 0)
+        image = cv2.resize(image, (self.img_size,self.img_size))
+        image = np.asarray(image, 'float32')
+        image = (image - 37.7) / 255.
+
+        # Rotation label is given manually
+        #  0: rotate 0
+        #  1: rotate 90
+        #  2: rotate 180
+        #  3: rotate 270
+        label = np.random.randint(0,4)
+        if label == 0:
+            pass
+        elif label == 1:
+            image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+        elif label == 2:
+            image = cv2.rotate(image, cv2.ROTATE_180)
+        else:
+            image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
+        image = np.expand_dims(image, axis=0)
+        image = torch.tensor(image)
+        label = torch.tensor(label)
+
+        return image, label
+
+
 def collate_fn(batch):
     imgs = []
     labels = []
@@ -216,10 +286,11 @@ if __name__ == "__main__":
     # print(sample)
 
     # LPRnet
-    df = pd.read_csv('20201229_EXT_clear_2data_mode_resize.csv')
-    lptdataset = LPRDataLoader(img_dir='data/20201229/EXT/resize', imgSize=(94, 24), df=df, mode='train')
-    dataloader = DataLoader(lptdataset, batch_size=1, collate_fn=collate_fn)
-    Image, label, length = next(iter(dataloader))
+    # visualtion = True
+    # df = pd.read_csv('data.csv')
+    # lptdataset = LPRDataLoader(img_dir='data/20201229/EXT/resize', imgSize=(94, 24), df=df, mode='train',visualtion=visualtion)
+    # dataloader = DataLoader(lptdataset, batch_size=1, collate_fn=collate_fn)
+    # Image, label, length = next(iter(dataloader))
     # for i, data in enumerate(dataloader):
     #     if i < 10:
     #         print(data[1])
@@ -227,3 +298,7 @@ if __name__ == "__main__":
     #     else:
     #         break
 
+
+    # Rotation dataset
+    rotationdataset = RotationDataset(path='data/20201229/EXT',mode='test')
+    print(next(iter(rotationdataset)))

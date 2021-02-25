@@ -382,18 +382,93 @@ class LPRNet(nn.Module):
 CHARS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
          'M', 'V', 'H','-'
         ]
+
+class Rotation_model(nn.Module):
+    def __init__(self, img_size, rgb=False, eval=False):
+        super().__init__()
+
+        self.softmax  = nn.Softmax(dim=-1)
+        self.img_size = img_size
+
+        if rgb:
+            in_channels = 3
+        else:
+            in_channels = 1
+
+        self.features = nn.Sequential(
+            nn.Conv2d(in_channels=in_channels, out_channels=64, kernel_size=3, stride=1), # (64,54,54)
+            nn.AvgPool2d(kernel_size=2), # (64, 27, 27)
+            nn.BatchNorm2d(num_features = 64), 
+            nn.ReLU(), 
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=2), # (128,12,12)
+            nn.AvgPool2d(kernel_size=2), # (128, 6, 6)
+            nn.BatchNorm2d(num_features = 128), 
+            nn.ReLU(),
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1), # (128,4,4)
+            nn.AvgPool2d(kernel_size=2), # (128, 2, 2)
+            nn.BatchNorm2d(num_features = 128), 
+            nn.ReLU()
+        )
+
+        # calculate the 1D feature size
+        size = self.outSize(self.img_size, 3, 1, 0)
+        size = self.outSize(size, 2, 2, 0)
+        size = self.outSize(size, 3, 2, 0)
+        size = self.outSize(size, 2, 2, 0)
+        size = self.outSize(size, 3, 1, 0)
+        size = self.outSize(size, 2, 2, 0)
+        size = size**2*128
+
+        self.classifier = nn.Sequential(
+            nn.Linear(in_features=size, out_features=64),
+            nn.ReLU(),
+            nn.Dropout(),
+            nn.Linear(in_features=64, out_features=4),
+            nn.ReLU()
+        )
+        
+    def outSize(self, input_size, kernal, stride, padding):
+        # recall the formula (W−F+2P)/S+1
+        outsize = math.floor((input_size - kernal + 2 * padding)/stride +1)
+        return outsize
+
+    def features_warpper(self, x):
+        x = self.features(x)
+        return x
+
+    def logits(self, features):
+        x = features.view(features.size(0), -1)
+        x = self.classifier(x)
+        return x
+
+    def forward(self, x):
+        # x will already resize to 56x56
+        if not eval:
+            x = self.features_warpper(x)
+            x = self.logits(x)
+            return x
+        else:
+            x = self.features(x)
+            x = self.logits(x)
+            x = self.softmax(x)
+            return x
+
     
 if __name__ == "__main__":
     from torchsummary import summary  
-    lprnet = LPRNet(class_num=len(CHARS), dropout_rate=0)
+    # lprnet = LPRNet(class_num=len(CHARS), dropout_rate=0)
     # print(lprnet)
     # summary(lprnet, (1,24,94), device="cpu")
 
     # from torch.utils.tensorboard import SummaryWriter
-    img = torch.randn(1,1,24,94)
+    # img = torch.randn(1,1,24,94)
     # writer = SummaryWriter('runs/test_1')
     # writer.add_graph(lprnet, img)
     # writer.close()
 
-    output = lprnet(img)
-    
+    # output = lprnet(img)
+
+
+    rotation_model = Rotation_model(img_size=128, rgb=False)
+    img = torch.randn(1,1,56,56)
+    print(rotation_model.features_warpper(img).shape)

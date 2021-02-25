@@ -1,56 +1,44 @@
 # Digits Recognization
-# Idea
-* use YOLO to detect the sole number (?)
+
+## Status
+* 2021/02/25:
+  * Rotation Head : 98~100 %
+  * YOLO map: 96.8 -> 100
+  * Upper part: 92.77 -> 96.39 %
+  * Lower part: 92.77 -> 98.80 %
+  * Combination: 84.34 -> 90.36 %
 
 ## Note
 * MultiplicativeNoise, RandomBrightness, GaussNoise hurt acc...
 * rewrite the decoding help at lotttttttt!
 * Inference and drawing on validation set is in `test_lprnet.py`
 * video output of the LPRnet result is in `utils.py`
+* `data.csv` is the correct version, some xmls are wrong
 
 ## Finished
 * Change image resolution (V)
+* enlarge a bit of annotation in x direction (V)
 * Change to cosine scheduler (V)
 * Use different decoder (V)
 * Move to the upper region (V)
-
-## TODO
-### Recognition Part
-* Use cutmix augmentation (postpone)
-* shuffle the number sequence
-* test-time augmentation
-* use the pattern remove image
-* Replace the language model
-
-### Detection Part
-Limit the shape
-
-* Upper Region
-  1. Merge to one (Max height, Max width)
-  2. Enlarge to certain size
-* Lower Region
-  1. Highest Score
-  2. lower the upper region with certain step
-
-
-## Dataset
-Split the data into two sets (V)
+* Split the data into two sets (V)
    1. One with 9 digits
    2. One with 3 digits + whatever
+* Rotation (V)
+  * the rotation model is in 'model.py'
+  * the weight is in 'weights/rotation/acc_100.00_loss_0.747.pth'
+  * Result: 
+    * val : 98.21% (56 images)
+    * test: 100  % (55 images)
 
 ## YOLO
 * modify the xml files (V)
   * check the code in EDA.ipynb (in "new annotation for yolo")
 * Put in the YOLO (V)
-### Output Modification
-* limit the min area
-* get the largest of height and width (if two boxes present)
-* increase the Upper class to 4/5 of the width
 
-## MTCNN
-TODO
-* Add the src file to increase the features (-)
+## MTCNN (Decrypted)
 * combine two the regions (V)
+* Add the src file to increase the features (-)
 * write the metric (V)
 * Refine the trainings (-)
 * Use the DFT (V)
@@ -94,13 +82,19 @@ In `preprocessing.py`
 
 ## LPRNet Workflow
 1. Take the data from ground truth
-   1. LPRDataLoader in `dataset.py`
+   * LPRDataLoader in `dataset.py`
 2. Train on `train_lprnet.py`
+3. Inference and image output is in `test_lprnet.py`
 
+## TODO
+### Recognition Part
+* Use cutmix augmentation (postpone)
+* shuffle the number sequence
+* test-time augmentation
+* use the pattern remove image
 
-### LPRnet
-1. Two-model
-   1. One with 9 digits
-   2. One with 3 digits + whatever
-2. One-model
-   1. Combine them together
+### Overall Process
+1. auto-rotate 
+2. detection cropping
+3. recognition (V)
+

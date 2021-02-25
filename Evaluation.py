@@ -177,18 +177,108 @@ if __name__ == '__main__':
 
 
     # ------------- My Test Section -------------
-    import pandas as pd
-    from dataset import *
-    from model import *
-    lprnet = LPRNet(class_num=len(CHARS), dropout_rate=0)
-    lprnet.load_state_dict(torch.load('weights/lprnet/lprnet_92.77.pth', map_location=lambda storage, loc: storage))
+    # import pandas as pd
+    # from dataset import *
+    # from model import *
+    # lprnet = LPRNet(class_num=len(CHARS), dropout_rate=0)
+    # lprnet.load_state_dict(torch.load('weights/lprnet/lprnet_92.77.pth', map_location=lambda storage, loc: storage))
 
-    df = pd.read_csv('20201229_EXT_clear_2data_mode_resize.csv')
-    train_dataset = LPRDataLoader(img_dir='data/20201229/EXT/resize', imgSize=(94, 24), df=df, mode='train')
+    # df = pd.read_csv('20201229_EXT_clear_2data_mode_resize.csv')
+    # train_dataset = LPRDataLoader(img_dir='data/20201229/EXT/resize', imgSize=(94, 24), df=df, mode='train')
 
-    train_dataloader = DataLoader(train_dataset, batch_size=1, collate_fn=collate_fn)
-    imgs, labels, lengths = next(iter(train_dataloader))
-    logits = lprnet(imgs)  # torch.Size([batch_size, CHARS length, output length ])
-    preds = logits.detach().numpy()  # (batch size, 14, 18)
-    _, pred_labels = decode(preds, CHARS)  # list of predict output
-    print(pred_labels)
+    # train_dataloader = DataLoader(train_dataset, batch_size=1, collate_fn=collate_fn)
+    # imgs, labels, lengths = next(iter(train_dataloader))
+    # logits = lprnet(imgs)  # torch.Size([batch_size, CHARS length, output length ])
+    # preds = logits.detach().numpy()  # (batch size, 14, 18)
+    # _, pred_labels = decode(preds, CHARS)  # list of predict output
+    # print(pred_labels)
+
+    # ------ Rotation Testing ------
+    # single image testing
+    # model_path = 'weights/rotation/acc_100.00_loss_0.747.pth'
+    # image_path = 'data/20201229/EXT/20201229101408_0EXT.bmp'
+    # ori_image  = cv2.imread(image_path, 0)
+    # image_size = 128
+    # image = cv2.resize(ori_image, (image_size,image_size))
+    # image = np.asarray(image, 'float32')
+    # image = (image - 37.7) / 255.
+
+    # image_list     = [image,
+    #                 cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE), 
+    #                 cv2.rotate(image, cv2.ROTATE_180), 
+    #                 cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)]
+    # ori_image_list = [ori_image,
+    #                 cv2.rotate(ori_image, cv2.ROTATE_90_CLOCKWISE), 
+    #                 cv2.rotate(ori_image, cv2.ROTATE_180), 
+    #                 cv2.rotate(ori_image, cv2.ROTATE_90_COUNTERCLOCKWISE)]
+    
+    # image_tensors = [torch.tensor(image) for image in image_list]
+    # image_tensors = [torch.reshape(image_tensor, (1,1,image_size,image_size)) for image_tensor in image_tensors] 
+
+    # rotate_dict = {0:0, 1:90, 2:180, 3:270}
+
+    # with torch.no_grad():
+    #     rotation_model = Rotation_model(rgb=False, eval=True, img_size=image_size)
+    #     rotation_model.load_state_dict(torch.load(model_path))
+    #     rotation_model.eval()
+
+    #     fig, axes = plt.subplots(2,2)
+    #     for i in range(len(image_tensors)):
+    #         rotate_key_prob = rotation_model(image_tensors[i])
+    #         rotate_key_prob = rotate_key_prob.squeeze()
+    #         rotate_key_prob = rotate_key_prob.numpy()
+    #         # for i in range(4):
+    #         #     print(f'Prob. of {rotate_dict[i]} deg  \t: {rotate_key_prob[i]:.3f}')
+    #         preidiction = rotate_dict[np.argmax(rotate_key_prob)]
+    #         # font = cv2.FONT_HERSHEY_SIMPLEX 
+    #         # org = (0, ori_image.shape[0])
+    #         # fontScale = 2
+    #         # color = (0,255,0)
+    #         # thickness = 2
+    #         ori_image_list[i] = cv2.cvtColor(ori_image_list[i], cv2.COLOR_GRAY2RGB)
+    #         # ori_image_list[i] = cv2.putText(ori_image_list[i], f'Prob. of {preidiction} deg: {np.max(rotate_key_prob):.3f}', 
+    #         #                         org, font, fontScale, color, thickness, cv2.LINE_AA) 
+    #         binindex = bin(i)
+    #         if len(binindex) <= 3:
+    #             axes[0,int(binindex[-1])].imshow(ori_image_list[i])
+    #             axes[0,int(binindex[-1])].set_title(f'Prob. of {preidiction} deg: {np.max(rotate_key_prob):.3f}')
+    #             axes[0,int(binindex[-1])].set_yticklabels([])
+    #             axes[0,int(binindex[-1])].set_xticklabels([])
+    #         else:
+    #             axes[1,int(binindex[-1])].imshow(ori_image_list[i])
+    #             axes[1,int(binindex[-1])].set_title(f'Prob. of {preidiction} deg: {np.max(rotate_key_prob):.3f}')
+    #             axes[1,int(binindex[-1])].set_yticklabels([])
+    #             axes[1,int(binindex[-1])].set_xticklabels([])
+    #     fig.suptitle('Testing set image', fontsize=16)
+    #     plt.show()
+
+    # testing set testing
+    criterion = nn.CrossEntropyLoss()
+    model_path     = 'weights/rotation/acc_100.00_loss_0.747.pth'
+    image_size     = 128
+    test_dataset   = RotationDataset(path='data/20201229/EXT/resize',mode='test', img_size=image_size)
+    test_loader    = DataLoader(test_dataset,  batch_size=128, shuffle=False, num_workers=2*os.cpu_count(), pin_memory=True)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    with torch.no_grad():
+        rotation_model = Rotation_model(rgb=False, eval=True, img_size=image_size)
+        rotation_model.load_state_dict(torch.load(model_path))
+        rotation_model.eval()
+        rotation_model.to(device)
+        test_loss     = 0.0
+        batch_count   = 0
+        total_count   = 0
+        correct_count = 0
+        for data in test_loader:
+            imgs, labels = data[0].to(device), data[1].to(device)
+            outputs      = rotation_model(imgs)
+            _, predicted = torch.max(outputs, 1)
+            loss = criterion(outputs, labels)
+            test_loss   += loss.item()
+            correct_count += (predicted == labels).sum().item()
+            batch_count += 1
+            total_count += labels.size(0)
+        accuracy = (100 * correct_count/total_count)
+        test_loss = test_loss/batch_count
+    print(f'Accuracy on testing set: {accuracy:.2f}%')
+    print(f'Total images count     : {len(test_dataset)}')
+    print(f'Loss on testing set    : {test_loss:.2f}')
