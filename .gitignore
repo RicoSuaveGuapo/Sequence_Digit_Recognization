@@ -16,5 +16,4 @@
 *.avi
 *.0
 *.json
-train_onet.py
-train_pnet.py
+
