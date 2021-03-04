@@ -366,6 +366,5 @@ def featurePCA(feature_path, label_path, sample_index_path=None):
 
 if __name__ == "__main__":
     # output the image results into a video
-    # images2video('tmp_result/LPRnet_result/correct', 'LPRnet_Combination.avi', 'tmp_result/LPRnet_result/', 0.5)
+    images2video('tmp_result/LPRnet_result/correct', 'LPRnet_Combination.avi', 'tmp_result/LPRnet_result/', 0.5)
 
-    

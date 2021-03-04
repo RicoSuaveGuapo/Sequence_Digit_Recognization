@@ -1,10 +1,11 @@
 import math
 import os
 import random
-from random import shuffle
 import shutil
+import sys
 import time
 import xml.etree.ElementTree as ET
+from random import shuffle
 
 import cv2 as cv
 import matplotlib.pyplot as plt
@@ -12,10 +13,8 @@ import numpy as np
 import pandas as pd
 import torch
 
-from utils import *
-import sys
-# sys.path.append('.')
 from model import *
+from utils import *
 
 # Global variable
 data_path = 'data/20201229/EXT/resize'
