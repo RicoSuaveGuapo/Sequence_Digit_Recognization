@@ -6,7 +6,7 @@
 2. - [x] Detection cropping
 3. - [x] Recognition
 4. - [ ] Connect all the section
-5. - [ ] Auxiliary methods (see Recognition Part in TODO
+5. - [ ] Auxiliary methods (see Recognition Part in TODO)
 
 * 2021/02/25:
   * Rotation Head : 98~100 %
@@ -16,11 +16,28 @@
   * Combination: 84.34 -> 90.36~92 %
 
 ## Information
+### Note
 * `data.csv` is the correct version, some xmls are wrong
 * MultiplicativeNoise, RandomBrightness, GaussNoise hurt accuracy
 * rewrite the decoding of lprnet helps a lotttttttt!
 * Inference and drawing on validation set is in `test_lprnet.py`
 * video output of the LPRnet result is in `utils.py`
+
+### Training
+* rotation model: `train_rotation.py`
+  * data in 'data/20201229/EXT/resize/new_image'
+* YOLO          : `yolov4/train.py`
+  * data in 'yolov4/VOCdevkit/VOC2007'
+* lprnet        : `train.lprnet.py`
+  * data in 'data/20201229/EXT/lpr_training_data'
+
+
+### Inference Workflow
+#### LPRNet Workflow
+1. Take the data from ground truth
+   * LPRDataLoader in `dataset.py`
+2. Train on `train_lprnet.py`
+3. Inference and image output is in `test_lprnet.py`
 
 ## TODO
 ### Recognition Part
@@ -28,13 +45,6 @@
 * - [ ] Shuffle the number sequence
 * - [ ] Test-time augmentation
 * - [ ] Use the pattern remove image
-
-## Inference Workflow
-### LPRNet Workflow
-1. Take the data from ground truth
-   * LPRDataLoader in `dataset.py`
-2. Train on `train_lprnet.py`
-3. Inference and image output is in `test_lprnet.py`
 
 
 ## Finished

@@ -161,7 +161,7 @@ if __name__ == '__main__':
     print("Successful to build network!")
     
     df         = pd.read_csv('data.csv')
-    image_path = 'data/20201229/EXT/resize'
+    image_path = 'data/20201229/EXT/resize/new_image'
     
     data_mode = df['mode']
     index     = data_mode == args.mode
@@ -183,7 +183,7 @@ if __name__ == '__main__':
     gt_1 = [str(d) for d in gt_1]
     gt   = [d+gt_2[i] for i, d in enumerate(gt_1)]
 
-    images_ori = [cv2.imread(d,0) for d in img_paths]
+    images_ori = [cv2.imread(d,0) for d in img_paths if d.endswith('.bmp')]
     # for upper region
     upper     = [d[ymin[i]:ymax_2[i], xmin[i]:xmax[i]] for i, d in enumerate(images_ori)]
     # for lower region

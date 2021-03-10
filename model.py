@@ -455,7 +455,8 @@ class Rotation_model(nn.Module):
 
     
 if __name__ == "__main__":
-    from torchsummary import summary  
+    from torchsummary import summary
+    import netron
     # lprnet = LPRNet(class_num=len(CHARS), dropout_rate=0)
     # print(lprnet)
     # summary(lprnet, (1,24,94), device="cpu")
@@ -470,5 +471,10 @@ if __name__ == "__main__":
 
 
     rotation_model = Rotation_model(img_size=128, rgb=False)
-    img = torch.randn(1,1,56,56)
-    print(rotation_model.features_warpper(img).shape)
+    img = torch.randn(1,1,128,128)
+    torch.onnx.export(rotation_model, img, 'Rotation_model.onnx')
+
+    # show structure
+    netron.start('Rotation_model.onnx')
+
+    # print(rotation_model.features_warpper(img).shape)

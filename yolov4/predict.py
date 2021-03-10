@@ -29,22 +29,22 @@ def images2video(image_dir_path, output_name, fps):
 if __name__ == "__main__":
     # Prediction part
     yolo = YOLO()
-    # path = 'VOCdevkit/VOC2007/JPEGImages'
-    # with open('VOCdevkit/VOC2007/ImageSets/Main/test.txt','r') as f:
-    #     test_list = f.readlines()
-    # test_list = [d.replace('\n','') for d in test_list]
+    path = 'VOCdevkit/VOC2007/JPEGImages'
+    with open('VOCdevkit/VOC2007/ImageSets/Main/test.txt','r') as f:
+        test_list = f.readlines()
+    test_list = [d.replace('\n','') for d in test_list]
 
-    # images = os.listdir(path)
-    # img_path = [os.path.join(path, img) for img in images if os.path.basename(img).split('.')[0] in test_list]
+    images = os.listdir(path)
+    img_path = [os.path.join(path, img) for img in images if os.path.basename(img).split('.')[0] in test_list]
 
-    # if not os.path.exists('predictions/Digits'):
-    #     os.mkdir('predictions/Digits')
-    # for img in img_path:
-    #     image = Image.open(img)
-    #     image = image.convert('RGB')
-    #     result = yolo.detect_image(image)
-    #     result.save(os.path.join('predictions', 'Digits',os.path.basename(img)))
-    #     print(f'Prediction on {os.path.basename(img)} is saved')
+    if not os.path.exists('predictions/Digits'):
+        os.mkdir('predictions/Digits')
+    for img in img_path:
+        image = Image.open(img)
+        image = image.convert('RGB')
+        result = yolo.detect_image(image)
+        result.save(os.path.join('predictions', 'Digits',os.path.basename(img)))
+        print(f'Prediction on {os.path.basename(img)} is saved')
 
     # covert result into video
     # fps = 0.7
@@ -67,11 +67,11 @@ if __name__ == "__main__":
 
 
 
-    img = 'VOCdevkit/VOC2007/JPEGImages/20201229175554_0EXT.jpg'
-    image = Image.open(img)
-    image = image.convert('RGB')
+    # img = 'VOCdevkit/VOC2007/JPEGImages/20201229175554_0EXT.jpg'
+    # image = Image.open(img)
+    # image = image.convert('RGB')
 
-    r_image = yolo.detect_image(image)
-    r_image = np.array(r_image)
-    plt.imshow(r_image)
-    plt.show()
+    # r_image = yolo.detect_image(image)
+    # r_image = np.array(r_image)
+    # plt.imshow(r_image)
+    # plt.show()
