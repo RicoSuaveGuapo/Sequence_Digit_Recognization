@@ -1,5 +1,7 @@
 # Sequence_Digit_Recognization
 
+![Flowchart](https://github.com/RicoSuaveGuapo//blob/Sequence_Digit_Recognization/Flowchart.png?raw=true)
+
 ## Status
 ### Overall Process
 1. - [x] Auto-rotate 
