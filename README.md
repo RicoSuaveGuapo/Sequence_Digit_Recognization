@@ -8,7 +8,7 @@
 4. - [ ] Connect all the section
 5. - [ ] Auxiliary methods (see Recognition Part in TODO)
 
-* 2021/02/25:
+* 2021/02/25 Results:
   * Rotation Head : 98~100 %
   * YOLO map: 96.8 -> 100
   * Upper part: 92.77 -> 96.39 %
@@ -17,34 +17,63 @@
 
 ## Information
 ### Note
-* `data.csv` is the correct version, some xmls are wrong
-* MultiplicativeNoise, RandomBrightness, GaussNoise hurt accuracy
-* rewrite the decoding of lprnet helps a lotttttttt!
-* Inference and drawing on validation set is in `test_lprnet.py`
-* video output of the LPRnet result is in `utils.py`
+* `data.csv`: contains overall annotations
+  * col: |ID|file_name|GT_1|GT_2|xmin|ymin|xmax|ymax|ymax_2|mode|
+  * GT_1: ground truth of upper region
+  * GT_2: ground truth of lower region
+  * mode: 0/1/2: training/validation/testing
+  ```
+  (xmin,ymin)  --------------------
+                |   upper region   |
+                -------------------- (xmax,ymax_2)
+                |   lower region   |
+                --------------------
+                                    (xmax,ymax)
+  ```
+* MultiplicativeNoise, RandomBrightness, GaussNoise data augmentation hurt LPRnet accuracy
+* Rewrite the decoding of LPRnet helps a lotttttttt!
 
-### Training
+### How to Train
 * rotation model: `train_rotation.py`
   * data in 'data/20201229/EXT/resize/new_image'
 * YOLO          : `yolov4/train.py`
   * data in 'yolov4/VOCdevkit/VOC2007'
-* lprnet        : `train.lprnet.py`
-  * data in 'data/20201229/EXT/lpr_training_data'
+* lprnet        : `train_lprnet.py`
+  * data in 'data/20201229/EXT/resize/new_image'
+  * will use the `data.csv` to crop the images
 
 
-### Inference Workflow
-#### LPRNet Workflow
-1. Take the data from ground truth
-   * LPRDataLoader in `dataset.py`
-2. Train on `train_lprnet.py`
-3. Inference and image output is in `test_lprnet.py`
+### How to Inference
+
+#### Rotation Model
+* Single image: check rotation part in `output_pipeline.py`
+* Evaluate the performance: check `test_rotation.py`
+
+#### YOLO
+* Qualitative Result (bbox on images):Check `yolov4/predict.py`
+* Quantitative Result (Map, F1 and diagrams... etc.):
+  1. Modifing (change to your training result) the model path in `yolov4/yolo.py`
+  2. Run `yolov4/get_dr_txt.py`
+  3. Run `yolov4/get_gt_txt.py`
+  4. Run `yolov4/get_map.py`
+  5. Results will be saved in `yolov4/results`
+
+#### LPRnet
+* Inference and image output is in `test_lprnet.py`
+* Drawing diagrams on validation set is in `test_lprnet.py`
+* Video output of the LPRnet result is in `utils.py`
+
+
 
 ## TODO
-### Recognition Part
+### Improvements
 * - [ ] Use cutmix augmentation (postpone)
 * - [ ] Shuffle the number sequence
 * - [ ] Test-time augmentation
 * - [ ] Use the pattern remove image
+
+### Other methods
+* Using [SHVM dataset](http://ufldl.stanford.edu/housenumbers/?fbclid=IwAR3C2sFr6IIH4LxXr_EVbuGVWky7JCCA46veUt-no8o2CcwkUdwbBIs7Zo8) train yolo.
 
 
 ## Finished
@@ -67,7 +96,8 @@
     * check the code in EDA.ipynb (in "new annotation for yolo")
   * - [x] Put in the YOLO
 
-## MTCNN (Decrypted)
+================================== Decrypted ==================================
+## MTCNN 
 * - [x] combine two the regions
 * Add the src file to increase the features (-)
 * - [x] write the metric

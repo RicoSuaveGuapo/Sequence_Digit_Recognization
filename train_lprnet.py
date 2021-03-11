@@ -51,7 +51,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', default=16, help='batch size')
     parser.add_argument('--save_dir', help='batch size')
     parser.add_argument('--part', help='which part should be trained')
-    parser.set_defaults(epoch=1024, batch_size=16, img_dir='data/20201229/EXT/resize', \
+    parser.set_defaults(epoch=1024, batch_size=16, img_dir='data/20201229/EXT/resize/new_image', \
                         df='data.csv', save_dir='weights/lprnet', \
                         pth='tmp_result/LPRnet_result/reserved_weight/lower_95.18.pth', part='lower')
     args = parser.parse_args()
