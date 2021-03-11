@@ -1,6 +1,6 @@
 # Sequence_Digit_Recognization
 
-![Flowchart](https://github.com/RicoSuaveGuapo/Sequence_Digit_Recognization/blob/Flowchart.png?raw=true)
+![Flowchart](https://i.imgur.com/yolklp3.png)
 
 ## Status
 ### Overall Process
